@@ -1,23 +1,36 @@
 const CLEAR: &str = "\x1B[2J\x1B[1;1H";
 
-fn expensive_calculation(_: &i32) {
-    std::thread::sleep(std::time::Duration::from_secs(1));
+struct Progress<I> {
+    iter: I,
+    i: usize
 }
 
-fn progress<I>(v: I, f: fn(I::Item) -> ())
+impl<I> Progress<I> {
+    fn new(iter: I) -> Self {
+        Progress { iter, i: 0 }
+    }
+}
+
+impl<I> Iterator for Progress<I>
     where I: Iterator
 {
-    let mut i = 0;
+    type Item = I::Item;
 
-    for n in v {
-        println!("{}{}", CLEAR, "*".repeat(i + 1));
-        i += 1;
-        f(n);
+    fn next(&mut self) -> Option<Self::Item> {
+        println!("{}{}", CLEAR, "*".repeat(self.i + 1));
+        self.i += 1;
+        self.iter.next()
     }
+}
+
+fn expensive_calculation(_: &i32) {
+    std::thread::sleep(std::time::Duration::from_secs(1));
 }
 
 fn main() {
     let data = vec![1, 2, 3, 4, 5, 6];
 
-    progress(data.iter(), expensive_calculation);
+    for n in Progress::new(data.iter()) {
+        expensive_calculation(n);
+    }
 }
