@@ -4,8 +4,8 @@ fn expensive_calculation(_: &i32) {
     std::thread::sleep(std::time::Duration::from_secs(1));
 }
 
-fn progress<T, I>(v: I, f: fn(T) -> ())
-    where I: Iterator<Item = T>
+fn progress<I>(v: I, f: fn(I::Item) -> ())
+    where I: Iterator
 {
     let mut i = 0;
 
