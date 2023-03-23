@@ -1,16 +1,22 @@
 const CLEAR: &str = "\x1B[2J\x1B[1;1H";
 
-struct Progress<I> {
+struct Progress<I: Iterator> {
     iter: I,
     i: usize,
-    bound: Option<usize>
+    bound: Option<usize>,
+    delimiters: (char, char)
 }
 
 impl<I> Progress<I>
     where I: Iterator
 {
     fn new(iter: I) -> Self {
-        Progress { iter, i: 0, bound: None }
+        Progress { iter, i: 0, bound: None, delimiters: ('<', '>') }
+    }
+
+    fn with_delimiters(mut self, delimiters: (char, char)) -> Self {
+        self.delimiters = delimiters;
+        self
     }
 }
 
@@ -33,7 +39,13 @@ impl<I> Iterator for Progress<I>
 
         match &self.bound {
             Some(bound) => {
-                println!("[{}{}]", "*".repeat(self.i), " ".repeat(bound - self.i));
+                println!(
+                    "{}{}{}{}", 
+                    self.delimiters.0,
+                    "*".repeat(self.i), 
+                    " ".repeat(bound - self.i),
+                    self.delimiters.1
+                );
             }
             None => {
                 println!("{}", "*".repeat(self.i + 1));
@@ -44,7 +56,7 @@ impl<I> Iterator for Progress<I>
     }
 }
 
-trait ProgressIteratorExt: Sized {
+trait ProgressIteratorExt: Sized + Iterator {
     fn progress(self) -> Progress<Self>;
 }
 
@@ -73,7 +85,7 @@ fn main() {
         expensive_calculation(n);
     }
 
-    for n in data.iter().progress().with_bound() {
+    for n in data.iter().progress().with_bound().with_delimiters((':', ':')) {
         expensive_calculation(n);
     }
 }
