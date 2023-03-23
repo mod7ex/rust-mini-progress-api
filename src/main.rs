@@ -23,6 +23,18 @@ impl<I> Iterator for Progress<I>
     }
 }
 
+trait ProgressIteratorExt: Sized {
+    fn progress(self) -> Progress<Self>;
+}
+
+impl<I> ProgressIteratorExt for I
+    where I: Iterator
+{
+    fn progress(self) -> Progress<Self> {
+        Progress::new(self)
+    }
+}
+
 fn expensive_calculation(_: &i32) {
     std::thread::sleep(std::time::Duration::from_secs(1));
 }
@@ -30,7 +42,7 @@ fn expensive_calculation(_: &i32) {
 fn main() {
     let data = vec![1, 2, 3, 4, 5, 6];
 
-    for n in Progress::new(data.iter()) {
+    for n in data.iter().progress() {
         expensive_calculation(n);
     }
 }
