@@ -1,69 +1,94 @@
 const CLEAR: &str = "\x1B[2J\x1B[1;1H";
 
-struct Progress<I: Iterator> {
-    iter: I,
-    i: usize,
-    bound: Option<usize>,
+// States
+struct Unbounded;
+struct Bounded {
+    bound: usize,
     delimiters: (char, char)
 }
 
-impl<I> Progress<I>
+struct Progress<I: Iterator, B> {
+    iter: I,
+    i: usize,
+    bound: B
+}
+
+trait ProgressDisplay: Sized {
+    fn display<I: Iterator>(&self, progress: &Progress<I, Self>);
+}
+
+impl ProgressDisplay for Unbounded {
+    fn display<I: Iterator>(&self, progress: &Progress<I, Self>) {
+        println!("{}{}", CLEAR, "*".repeat(progress.i + 1));
+    }
+}
+
+impl ProgressDisplay for Bounded {
+    fn display<I: Iterator>(&self, progress: &Progress<I, Self>) {
+        println!(
+            "{}{}{}{}{}",
+            CLEAR, 
+            self.delimiters.0,
+            "*".repeat(progress.i), 
+            " ".repeat(self.bound - progress.i),
+            self.delimiters.1
+        );
+    }
+}
+
+impl<I> Progress<I, Unbounded>
     where I: Iterator
 {
     fn new(iter: I) -> Self {
-        Progress { iter, i: 0, bound: None, delimiters: ('<', '>') }
-    }
-
-    fn with_delimiters(mut self, delimiters: (char, char)) -> Self {
-        self.delimiters = delimiters;
-        self
+        Progress { iter, i: 0, bound: Unbounded }
     }
 }
 
-impl<I> Progress<I>
+impl<I> Progress<I, Unbounded>
     where I: ExactSizeIterator
 {
-    fn with_bound(mut self) -> Self {
-        self.bound = Some(self.iter.len());
+    fn with_bound(self) -> Progress<I, Bounded> {
+        let bound = self.iter.len();
+        Progress {
+            i: self.i,
+            iter: self.iter,
+            bound: Bounded {
+                bound,
+                delimiters: ('[', ']')
+            }
+        }
+    }
+}
+
+impl<I> Progress<I, Bounded>
+    where I: Iterator
+{
+    fn with_delimiters(mut self, delimiters: (char, char)) -> Self {
+        self.bound.delimiters = delimiters;
         self
     }
 }
 
-impl<I> Iterator for Progress<I>
-    where I: Iterator
+impl<I ,B> Iterator for Progress<I, B>
+    where I: Iterator, B: ProgressDisplay
 {
     type Item = I::Item;
 
     fn next(&mut self) -> Option<Self::Item> {
-        print!("{}", CLEAR);
-
-        match &self.bound {
-            Some(bound) => {
-                println!(
-                    "{}{}{}{}", 
-                    self.delimiters.0,
-                    "*".repeat(self.i), 
-                    " ".repeat(bound - self.i),
-                    self.delimiters.1
-                );
-            }
-            None => {
-                println!("{}", "*".repeat(self.i + 1));
-            }
-        }
+        self.bound.display(&self);
         self.i += 1;
         self.iter.next()
     }
 }
 
 trait ProgressIteratorExt: Sized + Iterator {
-    fn progress(self) -> Progress<Self>;
+    fn progress(self) -> Progress<Self, Unbounded>;
 }
 
 impl<I> ProgressIteratorExt for I
     where I: Iterator
 {
-    fn progress(self) -> Progress<Self> {
+    fn progress(self) -> Progress<Self, Unbounded> {
         Progress::new(self)
     }
 }
@@ -85,6 +110,7 @@ fn main() {
         expensive_calculation(n);
     }
 
+    // we can use <with_delimiters> only if <with_bound> is used
     for n in data.iter().progress().with_bound().with_delimiters((':', ':')) {
         expensive_calculation(n);
     }
