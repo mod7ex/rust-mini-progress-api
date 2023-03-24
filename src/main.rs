@@ -29,8 +29,8 @@ impl ProgressDisplay for Bounded {
             "{}{}{}{}{}",
             CLEAR, 
             self.delimiters.0,
-            "*".repeat(progress.i), 
-            " ".repeat(self.bound - progress.i),
+            "*".repeat(progress.i + 1), 
+            " ".repeat(self.bound - progress.i - 1),
             self.delimiters.1
         );
     }
@@ -44,6 +44,7 @@ impl<I> Progress<I, Unbounded>
     }
 }
 
+// State Machine -- State-1 to State-2
 impl<I> Progress<I, Unbounded>
     where I: ExactSizeIterator
 {
@@ -85,6 +86,7 @@ trait ProgressIteratorExt: Sized + Iterator {
     fn progress(self) -> Progress<Self, Unbounded>;
 }
 
+// Extending all types implementing Iterator
 impl<I> ProgressIteratorExt for I
     where I: Iterator
 {
